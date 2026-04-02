@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Chaz - Full-Stack TypeScript App (Vercel)
 
-## Getting Started
+A minimal Next.js full-stack starter with TypeScript for Vercel deployment.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Frontend: `app` directory (React components)
+- Backend: `app/api/*` routes (serverless handlers)
+- TypeScript + ESLint + Prettier
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Install
+   - `npm install`
+2. Run locally
+   - `npm run dev`
+3. Build
+   - `npm run build`
+4. Start
+   - `npm run start`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Relevant endpoints
 
-## Learn More
+- `GET /api/hello`
+- Home page: `/`
+- `POST /api/sessions` - create session
+- `GET /api/sessions?id=<sessionId>` - get session
+- `PATCH /api/sessions` - update session fields
 
-To learn more about Next.js, take a look at the following resources:
+## Session data model
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `id: string`
+- `player1_token?: string`
+- `player2_token?: string`
+- `keyword: string`
+- `white: 'player1' | 'player2'`
+- `started: boolean`
+- `moves: string` (comma-separated SAN or long algebraic)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## API auth behavior
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `POST /api/sessions` with `keyword` returns:
+  - role: `player1` | `player2` | `observer`
+  - `token` for player roles
+  - session payload
+- `PATCH /api/sessions` requires:
+  - `keyword`, `token`, `action`
+  - actions: `sit_white`, `sit_black`, `ready`, `move`
+- `GET /api/sessions` read-only board view via `id` or `keyword`, no token required
