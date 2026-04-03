@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import { ChessBoard } from './ChessBoard';
 import type { Session } from './types';
@@ -37,19 +37,54 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState('idle');
 
-  useEffect(() => {
-    if (!keyword) return;
-    const timer = setInterval(() => {
-      fetch(`/api/sessions?keyword=${encodeURIComponent(keyword)}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (!data.error) setSession(data);
-        })
-        .catch((err) => setError(String(err)));
-    }, 2000);
+  // WebSocket real-time session updates
+  const wsRef = useRef<WebSocket | null>(null);
 
-    return () => clearInterval(timer);
-  }, [keyword]);
+  useEffect(() => {
+    if (!keyword || !token) return;
+    let ws: WebSocket | null = null;
+    let closed = false;
+
+    function connect() {
+      ws = new window.WebSocket(`ws://${window.location.host}/ws`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        ws?.send(JSON.stringify({ type: 'join', keyword, token }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'session' && msg.session) {
+            setSession(msg.session);
+          } else if (msg.type === 'joined' && msg.session) {
+            setSession(msg.session);
+            setRole(msg.role);
+          }
+        } catch (err) {
+          setError('WebSocket message error: ' + String(err));
+        }
+      };
+
+      ws.onerror = (err) => {
+        setError('WebSocket error');
+      };
+
+      ws.onclose = () => {
+        if (!closed) {
+          setTimeout(connect, 1000); // reconnect
+        }
+      };
+    }
+
+    connect();
+
+    return () => {
+      closed = true;
+      ws?.close();
+    };
+  }, [keyword, token]);
 
   const board = useMemo(() => (session && session.started ? renderBoardFromMoves(session.moves) : []), [session]);
 
@@ -80,27 +115,19 @@ export default function HomePage() {
     setStatus('joined');
   };
 
-  const sendAction = async (action: string, move?: string) => {
+  const sendAction = (action: string, move?: string) => {
     if (!keyword || !token) {
       setError('keyword/token required');
       return;
     }
-    const body: any = { keyword, token, action };
-    if (move) body.move = move;
-
-    const res = await fetch('/api/sessions', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || 'action failed');
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      setError('WebSocket not connected');
       return;
     }
-
-    setSession(data.session);
+    const msg: any = { type: action, keyword, token };
+    if (move) msg.move = move;
+    ws.send(JSON.stringify(msg));
   };
 
   return (
