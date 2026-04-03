@@ -46,7 +46,8 @@ export default function HomePage() {
     let closed = false;
 
     function connect() {
-      ws = new window.WebSocket(`ws://${window.location.host}/ws`);
+      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new window.WebSocket(`${protocol}://${window.location.host}/ws`);
       wsRef.current = ws;
 
       ws.onopen = () => {
