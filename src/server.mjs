@@ -8,7 +8,7 @@ import {
   createSession,
   upsertSession,
   ChessSession
-} from './lib/sqlite.ts';
+} from './lib/sessions';
 
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
@@ -39,45 +39,47 @@ function getConnectionIp(req) {
   return req.socket.remoteAddress || 'unknown';
 }
 
-function toPlayerSlot(session, ip) {
-  if (session.player1_ip === ip) return 'player1';
-  if (session.player2_ip === ip) return 'player2';
-  if (!session.player1_ip) return 'player1';
-  if (!session.player2_ip) return 'player2';
+function toPlayerSlot(session, token) {
+  if (session.player1_token === token) return 'player1';
+  if (session.player2_token === token) return 'player2';
+  if (!session.player1_token) return 'player1';
+  if (!session.player2_token) return 'player2';
   return null;
 }
 
-function ensureSessionForKeyword(keyword, ip) {
-  let session = getSessionByKeyword(keyword);
+async function ensureSessionForKeyword(keyword, token) {
+  let session = await getSessionByKeyword(keyword);
   if (!session) {
     const emptySession = {
       id: uuidv4(),
-      player1_ip: ip,
-      player2_ip: null,
+      player1_token: token,
+      player2_token: null,
       keyword,
       white: 'player1',
       started: false,
+      player1_ready: false,
+      player2_ready: false,
       moves: ''
     };
-    return createSession(emptySession);
+    return await createSession(emptySession);
   }
 
-  if (!session.player2_ip && session.player1_ip !== ip) {
-    session.player2_ip = ip;
-    return upsertSession(session);
+  if (!session.player2_token && session.player1_token !== token) {
+    session.player2_token = token;
+    return await upsertSession(session);
   }
 
   return session;
 }
 
-function handleCommand(ws, msg) {
+async function handleCommand(ws, msg) {
   const meta = clientMeta.get(ws);
   if (!meta) {
     sendWs(ws, { type: 'error', message: 'Not joined yet' });
     return;
   }
 
-  const session = getSession(meta.sessionId);
+  const session = await getSession(meta.sessionId);
   if (!session) {
     sendWs(ws, { type: 'error', message: 'Session not found' });
     return;
@@ -85,26 +87,22 @@ function handleCommand(ws, msg) {
 
   switch (msg.type) {
     case 'sit_white': {
-      const slot = toPlayerSlot(session, meta.ip);
+      const slot = toPlayerSlot(session, meta.token);
       if (!slot) return sendWs(ws, { type: 'error', message: 'Game is full, observer only' });
       session.white = slot;
-      if (slot === 'player1') session.player1_ip = meta.ip;
-      if (slot === 'player2') session.player2_ip = meta.ip;
-      upsertSession(session);
+      await upsertSession(session);
       return broadcast(session.id, { type: 'session', session });
     }
     case 'sit_black': {
-      const slot = toPlayerSlot(session, meta.ip);
+      const slot = toPlayerSlot(session, meta.token);
       if (!slot) return sendWs(ws, { type: 'error', message: 'Game is full, observer only' });
       session.white = slot === 'player1' ? 'player2' : 'player1';
-      if (slot === 'player1') session.player1_ip = meta.ip;
-      if (slot === 'player2') session.player2_ip = meta.ip;
-      upsertSession(session);
+      await upsertSession(session);
       return broadcast(session.id, { type: 'session', session });
     }
     case 'ready': {
       session.started = true;
-      upsertSession(session);
+      await upsertSession(session);
       return broadcast(session.id, { type: 'session', session });
     }
     case 'move': {
@@ -112,7 +110,7 @@ function handleCommand(ws, msg) {
       if (!move) return sendWs(ws, { type: 'error', message: 'Move text required' });
       const moves = session.moves ? `${session.moves},${move}` : move;
       session.moves = moves;
-      upsertSession(session);
+      await upsertSession(session);
       return broadcast(session.id, { type: 'session', session });
     }
     default:
@@ -127,10 +125,9 @@ app.prepare().then(() => {
 
   const wss = new WebSocketServer({ server, path: '/ws' });
 
-  wss.on('connection', (ws, req) => {
-    const ip = getConnectionIp(req);
 
-    ws.on('message', (raw) => {
+  wss.on('connection', (ws, req) => {
+    ws.on('message', async (raw) => {
       let msg;
       try {
         msg = JSON.parse(raw.toString());
@@ -142,16 +139,19 @@ app.prepare().then(() => {
         if (!msg.keyword || typeof msg.keyword !== 'string') {
           return sendWs(ws, { type: 'error', message: 'keyword required' });
         }
+        if (!msg.token || typeof msg.token !== 'string') {
+          return sendWs(ws, { type: 'error', message: 'token required' });
+        }
 
-        const session = ensureSessionForKeyword(msg.keyword, ip);
+        const session = await ensureSessionForKeyword(msg.keyword, msg.token);
 
         let role = 'observer';
-        if (session.player1_ip === ip) role = 'white';
-        else if (session.player2_ip === ip) role = 'black';
+        if (session.player1_token === msg.token) role = 'white';
+        else if (session.player2_token === msg.token) role = 'black';
 
         if (!sessionsClients.has(session.id)) sessionsClients.set(session.id, new Set());
         sessionsClients.get(session.id).add(ws);
-        clientMeta.set(ws, { sessionId: session.id, ip, role });
+        clientMeta.set(ws, { sessionId: session.id, token: msg.token, role });
 
         sendWs(ws, { type: 'joined', session, role });
         broadcast(session.id, { type: 'session', session });
@@ -162,7 +162,7 @@ app.prepare().then(() => {
         return sendWs(ws, { type: 'error', message: 'must join first' });
       }
 
-      handleCommand(ws, msg);
+      await handleCommand(ws, msg);
     });
 
     ws.on('close', () => {

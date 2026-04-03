@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { createSession, getSession, getSessionByKeyword, upsertSession } from '../../../lib/sqlite';
+import { createSession, getSession, getSessionByKeyword, upsertSession } from '../../../lib/sessions';
 
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get('id');
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'keyword is required' }, { status: 400 });
   }
 
-  let session = getSessionByKeyword(keyword);
+  let session = await getSessionByKeyword(keyword);
 
   if (!session) {
     const token = uuidv4();
@@ -80,7 +80,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'keyword, token, and action are required' }, { status: 400 });
   }
 
-  const session = getSessionByKeyword(keyword);
+  const session = await getSessionByKeyword(keyword);
   if (!session) {
     return NextResponse.json({ error: 'session not found' }, { status: 404 });
   }
@@ -126,7 +126,7 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: 'both players must be present before ready' }, { status: 400 });
       }
       // Always reload the latest session state before updating ready flags
-      const latest = getSessionByKeyword(keyword);
+      const latest = await getSessionByKeyword(keyword);
       if (!latest) {
         return NextResponse.json({ error: 'session not found' }, { status: 404 });
       }
@@ -153,6 +153,6 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'invalid action' }, { status: 400 });
   }
 
-  const updated = upsertSession(session);
+  const updated = await upsertSession(session);
   return NextResponse.json({ session: updated });
 }
