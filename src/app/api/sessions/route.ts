@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { createSession, getSession, getSessionByKeyword, upsertSession } from '../../../lib/sessions';
+import { createSession, getSession, getSessionByKeyword, upsertSession } from '../../../../lib/sessions';
 
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get('id');
   const keyword = request.nextUrl.searchParams.get('keyword');
 
   if (id) {
-    const session = getSession(id);
+    const session = await getSession(id);
     if (!session) {
       return NextResponse.json({ error: 'session not found' }, { status: 404 });
     }
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (keyword) {
-    const session = getSessionByKeyword(keyword);
+    const session = await getSessionByKeyword(keyword);
     if (!session) {
       return NextResponse.json({ error: 'session not found' }, { status: 404 });
     }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   if (!session) {
     const token = uuidv4();
-    const created = createSession({
+    const created = await createSession({
       id: uuidv4(),
       player1_token: token,
       player2_token: null,
@@ -54,14 +54,14 @@ export async function POST(request: NextRequest) {
   if (!session.player1_token) {
     const token = uuidv4();
     session.player1_token = token;
-    session = upsertSession(session);
+    session = await upsertSession(session);
     return NextResponse.json({ role: 'player1', token, session });
   }
 
   if (!session.player2_token) {
     const token = uuidv4();
     session.player2_token = token;
-    session = upsertSession(session);
+    session = await upsertSession(session);
     return NextResponse.json({ role: 'player2', token, session });
   }
 
