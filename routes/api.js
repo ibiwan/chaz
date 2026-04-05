@@ -1,3 +1,7 @@
+
+import express from 'express';
+const router = express.Router();
+
 import { offerDraw, acceptDraw } from '../service/metagame.js';
 // Offer draw endpoint
 router.post('/sessions/offer-draw', withPlayerSession(async (req, res, player, session) => {
@@ -18,10 +22,6 @@ router.post('/sessions/accept-draw', withPlayerSession(async (req, res, player, 
     res.status(400).json({ error: err.message });
   }
 }));
-
-// Minimal REST API router
-import express from 'express';
-const router = express.Router();
 
 import { sit, ready, connect, getState } from '../service/metagame.js';
 import { move, resign, startGame } from '../service/game.js';
