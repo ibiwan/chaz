@@ -1,12 +1,32 @@
-// Accessors for the sessions table using pg client
 import dotenv from 'dotenv';
 dotenv.config();
-import { Client } from 'pg';
+import pgPromise from 'pg-promise';
 
-const client = new Client({
-  connectionString: process.env.DATABASE_URL,
+const pgp = pgPromise({
+  error(err, e) {
+    console.error('[DB] pool error:', err.message, e?.cn ? `(host: ${e.cn.host})` : '');
+  },
 });
-if (!client._connected) client.connect();
+
+const db = pgp(process.env.DATABASE_URL);
+
+// Retryable PG error codes: connection reset/refused/timeout, server shutdown
+const RETRYABLE = new Set(['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', '57P01', '08006', '08001', '08003', '08004']);
+
+function isRetryable(err) {
+  return RETRYABLE.has(err.code) || /terminating connection|connection reset/i.test(err.message || '');
+}
+
+async function withReadRetry(fn, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (!isRetryable(err) || i === retries - 1) throw err;
+      await new Promise(r => setTimeout(r, 100 * 2 ** i));
+    }
+  }
+}
 
 // Converts a DB row to a JS session object
 function rowToSession(row) {
@@ -29,19 +49,21 @@ function rowToSession(row) {
 }
 
 export async function getSessionByKeyword(keyword) {
-  const { rows } = await client.query('SELECT * FROM sessions WHERE keyword = $1 LIMIT 1', [keyword]);
-  if (rows.length === 0) return null;
-  return rowToSession(rows[0]);
+  const row = await withReadRetry(() =>
+    db.oneOrNone('SELECT * FROM sessions WHERE keyword = $1 LIMIT 1', [keyword])
+  );
+  return row ? rowToSession(row) : null;
 }
 
 export async function getSessionByToken(token) {
-  const { rows } = await client.query('SELECT * FROM sessions WHERE player1_token = $1 OR player2_token = $1 LIMIT 1', [token]);
-  if (rows.length === 0) return null;
-  return rowToSession(rows[0]);
+  const row = await withReadRetry(() =>
+    db.oneOrNone('SELECT * FROM sessions WHERE player1_token = $1 OR player2_token = $1 LIMIT 1', [token])
+  );
+  return row ? rowToSession(row) : null;
 }
 
 export async function createSession(session) {
-  const { rows } = await client.query(
+  const row = await db.oneOrNone(
     `INSERT INTO sessions (id, player1_token, player2_token, keyword, white, started, player1_ready, player2_ready, moves, winner, gameStatus, draw_offered)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
@@ -57,21 +79,21 @@ export async function createSession(session) {
       session.moves || '',
       session.winner || null,
       session.gameStatus || null,
-      session.draw_offered ? 1 : 0
+      session.draw_offered ? 1 : 0,
     ]
   );
-  if (rows.length === 0) return null;
-  return rowToSession(rows[0]);
+  return row ? rowToSession(row) : null;
 }
 
 export async function getSession(id) {
-  const { rows } = await client.query('SELECT * FROM sessions WHERE id = $1', [id]);
-  if (rows.length === 0) return null;
-  return rowToSession(rows[0]);
+  const row = await withReadRetry(() =>
+    db.oneOrNone('SELECT * FROM sessions WHERE id = $1', [id])
+  );
+  return row ? rowToSession(row) : null;
 }
 
 export async function upsertSession(session) {
-  const { rows } = await client.query(
+  const row = await db.oneOrNone(
     `UPDATE sessions SET
         player1_token = $2,
         player2_token = $3,
@@ -99,9 +121,8 @@ export async function upsertSession(session) {
       session.moves || '',
       session.winner || null,
       session.gameStatus || null,
-      session.draw_offered ? 1 : 0
+      session.draw_offered ? 1 : 0,
     ]
   );
-  if (rows.length === 0) return null;
-  return rowToSession(rows[0]);
+  return row ? rowToSession(row) : null;
 }
