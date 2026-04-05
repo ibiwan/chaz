@@ -1,8 +1,12 @@
-
 import express from 'express';
-const router = express.Router();
 
 import { offerDraw, acceptDraw } from '../service/metagame.js';
+import { sit, ready, connect, getState } from '../service/metagame.js';
+import { move, resign, startGame } from '../service/game.js';
+import { getPlayerSessionFromRequest } from '../service/auth.js';
+
+const router = express.Router();
+
 // Offer draw endpoint
 router.post('/sessions/offer-draw', withPlayerSession(async (req, res, player, session) => {
   try {
@@ -22,11 +26,6 @@ router.post('/sessions/accept-draw', withPlayerSession(async (req, res, player, 
     res.status(400).json({ error: err.message });
   }
 }));
-
-import { sit, ready, connect, getState } from '../service/metagame.js';
-import { move, resign, startGame } from '../service/game.js';
-import { getPlayerSessionFromRequest } from '../service/auth.js';
-import { saveAndCleanSession } from '../service/session-util.js';
 
 function withPlayerSession(handler) {
   return async (req, res) => {
