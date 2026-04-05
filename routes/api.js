@@ -4,7 +4,7 @@ import express from 'express';
 const router = express.Router();
 
 import { sit, ready, connect, getState } from '../service/metagame.js';
-import { move, resign } from '../service/game.js';
+import { move, resign, startGame } from '../service/game.js';
 import { getPlayerSessionFromRequest } from '../service/auth.js';
 import { saveAndCleanSession } from '../service/session-util.js';
 
@@ -22,23 +22,14 @@ function withPlayerSession(handler) {
   };
 }
 
-// Start game endpoint: sets session.started = true if both players are ready
+// Start game endpoint: delegates to game service
 router.post('/sessions/start', withPlayerSession(async (req, res, player, session) => {
-  if (!session) {
-    return res.status(404).json({ error: 'Session not found' });
+  try {
+    const result = await startGame(session, player);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
-  if (!player || (player !== 'player1' && player !== 'player2')) {
-    return res.status(400).json({ error: 'Invalid player' });
-  }
-  if (session.started) {
-    return res.status(400).json({ error: 'Game already started' });
-  }
-  if (!session.player1_ready || !session.player2_ready) {
-    return res.status(400).json({ error: 'Both players must be ready' });
-  }
-  session.started = true;
-  const result = await saveAndCleanSession(session, player);
-  res.json(result);
 }));
 
 router.post('/sessions/sit', withPlayerSession(async (req, res, player, session) => {

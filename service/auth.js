@@ -7,20 +7,25 @@ async function getPlayerSession(keyword, token) {
 
   const session = await getSessionByKeyword(keyword);
   if (!session) {
+    console.warn('[AUTH] No session found for keyword', keyword);
     return { player: null, session: null };
   }
 
   if (!token) {
+    console.warn('[AUTH] No token provided, observer mode');
     return { player: null, session };
   }
 
   if (session.player1_token === token) {
+    console.info('[AUTH] Token matches player1');
     return { player: 'player1', session };
   }
   if (session.player2_token === token) {
+    console.info('[AUTH] Token matches player2');
     return { player: 'player2', session };
   }
 
+  console.warn('[AUTH] Invalid token for session', { keyword, token });
   throw new Error('Invalid token for this session');
 }
 

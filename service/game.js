@@ -20,39 +20,56 @@ async function move(session, player, moveStr) {
   // Reconstruct game state
   const chess = new Chess();
   if (session.moves && session.moves.trim()) {
-    session.moves.split(',').map(m => m.trim()).filter(Boolean).forEach(m => chess.move(m));
+    session.moves.split(',').map(m => m.trim()).filter(Boolean).forEach(m => {
+      // Sanitize stored moves as well, just in case
+      const sanitized = m.replace(/[+#]$/, '');
+      chess.move(sanitized);
+    });
   }
 
   // Check if it's the current player's turn
   const isWhite = (session.white === 'player1' && player === 'player1') || (session.white === 'player2' && player === 'player2');
   const currentTurn = chess.turn() === 'w' ? 'white' : 'black';
+  console.log({ plain: chess.turn(), currentTurn });
   const isMyTurn = (isWhite && currentTurn === 'white') || (!isWhite && currentTurn === 'black');
   if (!isMyTurn) {
     throw new Error('Not your turn');
   }
 
+  // Sanitize move string (strip trailing + or #)
+  const sanitizedMove = moveStr.replace(/[+#]$/, '');
   // Validate and apply move
-  const result = chess.move(moveStr);
+  const result = chess.move(sanitizedMove);
   if (!result) {
     throw new Error('Invalid move');
   }
+  // Debug: print FEN and moves after move
+  console.log('[MOVE]', {
+    fen: chess.fen(),
+    moves: session.moves ? session.moves + ',' + sanitizedMove : sanitizedMove,
+    lastMove: sanitizedMove,
+    inCheck: chess.inCheck(),
+    isCheckmate: chess.isCheckmate(),
+    isStalemate: chess.isStalemate(),
+    isDraw: chess.isDraw(),
+  });
 
   // Check game state after move
   let gameStatus = null;
-  if (chess.in_checkmate()) {
+  if (chess.isCheckmate()) {
     // Current player made a move, so opponent is checkmated
     session.winner = player;
     session.ended = true;
     gameStatus = 'checkmate';
-  } else if (chess.in_stalemate()) {
+  } else if (chess.isStalemate()) {
     session.winner = null;
     session.ended = true;
     gameStatus = 'stalemate';
-  } else if (chess.in_draw()) {
+  } else if (chess.isDraw()) {
     session.winner = null;
     session.ended = true;
     gameStatus = 'draw';
-  } else if (chess.in_check()) {
+  } else if (chess.inCheck()) {
     gameStatus = 'check';
   }
   session.gameStatus = gameStatus;
@@ -86,4 +103,14 @@ async function resign(session, player) {
   return await saveAndCleanSession(session, player);
 }
 
-export { move, resign };
+// Start game: set session.started = true if both players are ready
+async function startGame(session, player) {
+  if (!session) throw new Error('Session not found');
+  if (!player || (player !== 'player1' && player !== 'player2')) throw new Error('Invalid player');
+  if (session.started) throw new Error('Game already started');
+  if (!session.player1_ready || !session.player2_ready) throw new Error('Both players must be ready');
+  session.started = true;
+  return await saveAndCleanSession(session, player);
+}
+
+export { move, resign, startGame };

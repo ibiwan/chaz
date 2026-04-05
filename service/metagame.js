@@ -27,6 +27,7 @@ async function sit(session, player, color) {
   session.white = intendedWhite;
   session.player1_ready = false;
   session.player2_ready = false;
+  console.log("sitting", { player, color, intendedWhite });
   return await saveAndCleanSession(session, player);
 }
 
@@ -42,13 +43,16 @@ async function ready(session, player) {
   }
   if (player === 'player1') session.player1_ready = true;
   if (player === 'player2') session.player2_ready = true;
+
+  console.log("ready", { player })
   return await saveAndCleanSession(session, player);
 }
 
 // getState: returns session by player/session, omitting tokens and id
 async function getState(session, player) {
   if (!session) return null;
-  return await saveAndCleanSession(session, player ?? 'observer');
+  console.log("getting", { player });
+  return await saveAndCleanSession(session, player);
 }
 
 async function connect(keyword) {
@@ -70,6 +74,7 @@ async function connect(keyword) {
     if (!updated) return null;
   }
 
+  console.log("connecting", { player, keyword });
   // If both player slots are full, caller is observer
   return await saveAndCleanSession(session, player);
 }
@@ -93,7 +98,8 @@ async function create(keyword) {
   };
   const created = await createSession(session);
   if (!created) return null;
-  // Return cleaned session for player1
+
+  console.log("creating", { player: 'player1', keyword });
   return await saveAndCleanSession(created, 'player1');
 }
 

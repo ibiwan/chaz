@@ -6,11 +6,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chaz React App</title>
   <link rel="stylesheet" href="./globals.css" />
+  <!-- Dynamically load chess.js as ESM and start app only after loaded -->
+  <script type="module">
+    import { Chess } from "https://unpkg.com/chess.js@1.4.0/dist/esm/chess.js";
+    window.Chess = Chess;
+    window.chessReady = true;
+    if (window.reactReady && window.startApp) window.startApp();
+  </script>
   <!-- React and Babel CDN -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 </head>
 
 <body>
@@ -18,10 +24,16 @@
   <script type="text/babel" src="./ChessBoard.jsx"></script>
   <script type="text/babel" src="./page.jsx"></script>
   <script type="text/babel">
-    // Mount the HomePage component from page.jsx
-    ReactDOM.createRoot(document.getElementById('root')).render(
-      React.createElement(HomePage)
-    );
+    window.reactReady = true;
+    window.startApp = function () {
+      if (!(window.chessReady && window.reactReady)) return;
+      if (window._appStarted) return;
+      window._appStarted = true;
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        React.createElement(HomePage)
+      );
+    };
+    if (window.chessReady) window.startApp();
   </script>
 </body>
 

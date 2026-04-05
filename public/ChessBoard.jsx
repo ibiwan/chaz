@@ -78,13 +78,26 @@ function ChessBoard({ board, session, role, sendAction }) {
     </div>
   );
 
+  // Use session.your_seat for robust seat detection
+  const seat = session.your_seat;
+  const isWhite = (session.white === 'player1' && seat === 'player1') || (session.white === 'player2' && seat === 'player2');
+  const currentTurn = chess.turn() === 'w' ? 'white' : 'black';
+  const isMyTurn = (seat === 'player1' || seat === 'player2') && ((isWhite && currentTurn === 'white') || (!isWhite && currentTurn === 'black'));
+
+console.log({currentTurn, isMyTurn})
+
   // UI rendering
+  const inCheck = chess.inCheck();
   return (
     <div>
       {stateDisplay}
       {/* Show 'Your turn' indicator if it's the player's turn */}
       {session.started && isMyTurn && (
         <div style={{ color: '#228B22', fontWeight: 'bold', marginBottom: 8, fontSize: 18 }}>Your turn</div>
+      )}
+      {/* Show 'Check!' indicator if in check */}
+      {session.started && inCheck && (
+        <div style={{ color: '#d32f2f', fontWeight: 'bold', marginBottom: 8, fontSize: 18 }}>Check!</div>
       )}
       {!session.started && (
         <>
@@ -134,11 +147,7 @@ function ChessBoard({ board, session, role, sendAction }) {
     </div>
   );
 
-  // Use session.your_seat for robust seat detection
-  const seat = session.your_seat;
-  const isWhite = (session.white === 'player1' && seat === 'player1') || (session.white === 'player2' && seat === 'player2');
-  const currentTurn = chess.turn() === 'w' ? 'white' : 'black';
-  const isMyTurn = (seat === 'player1' || seat === 'player2') && ((isWhite && currentTurn === 'white') || (!isWhite && currentTurn === 'black'));
+
 
   function toAlgebraic(row, col) {
     return String.fromCharCode(97 + col) + (8 - row);

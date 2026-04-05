@@ -8,6 +8,7 @@ export async function saveAndCleanSession(session, player) {
     throw new Error('Failed to update session');
   }
 
+  console.log('saveAndCleanSession', { session, player })
   const { id, player1_token, player2_token, ...rest } = updated;
   // Remove any tokens/your_seat from broadcasted state
   const publicSession = { ...rest };
