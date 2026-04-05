@@ -73,13 +73,13 @@ export async function createSession(session) {
       session.player2_token || null,
       session.keyword,
       session.white,
-      session.started ? 1 : 0,
-      session.player1_ready ? 1 : 0,
-      session.player2_ready ? 1 : 0,
+      Boolean(session.started),
+      Boolean(session.player1_ready),
+      Boolean(session.player2_ready),
       session.moves || '',
       session.winner || null,
       session.gameStatus || null,
-      session.draw_offered ? 1 : 0,
+      Boolean(session.draw_offered),
     ]
   );
   return row ? rowToSession(row) : null;
@@ -115,13 +115,13 @@ export async function upsertSession(session) {
       session.player2_token || null,
       session.keyword,
       session.white,
-      session.started ? 1 : 0,
-      session.player1_ready ? 1 : 0,
-      session.player2_ready ? 1 : 0,
+      Boolean(session.started),
+      Boolean(session.player1_ready),
+      Boolean(session.player2_ready),
       session.moves || '',
       session.winner || null,
       session.gameStatus || null,
-      session.draw_offered ? 1 : 0,
+      Boolean(session.draw_offered),
     ]
   );
   return row ? rowToSession(row) : null;
