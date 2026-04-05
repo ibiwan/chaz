@@ -7,8 +7,7 @@ import {
   getSessionByKeyword,
   createSession,
   upsertSession,
-  ChessSession
-} from './lib/sessions';
+} from '../.next/server/lib/sessions.js';
 
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
