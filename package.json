@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "node src/server.mjs",
+    "dev": "ts-node src/server.mjs",
+    "build": "npm run build:backend && next build",
+    "build:backend": "tsc --project tsconfig.json --pretty && node copy-server.mjs.js",
+    "start": "node dist/server.mjs",
     "lint": "eslint"
   },
   "dependencies": {
