@@ -1,37 +1,17 @@
 {
-  "name": "chazz",
-  "version": "0.1.0",
-  "private": true,
+  "name": "chaz-server",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "module",
   "scripts": {
-    "dev": "ts-node src/server.mjs",
-    "build": "npm run build:backend && next build",
-    "build:backend": "tsc --project tsconfig.json --pretty && node copy-server.mjs.js",
-    "start": "node dist/server.mjs",
-    "lint": "eslint"
+    "start": "node server.js"
   },
   "dependencies": {
-    "better-sqlite3": "^12.8.0",
     "chess.js": "^1.4.0",
-    "next": "16.2.2",
-    "pg": "^8.20.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "styled-jsx": "^5.1.7",
-    "uuid": "^13.0.0",
-    "ws": "^8.20.0"
-  },
-  "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^20.19.37",
-    "@types/pg": "^8.20.0",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@typescript-eslint/eslint-plugin": "^8.58.0",
-    "@typescript-eslint/parser": "^8.58.0",
-    "babel-plugin-react-compiler": "1.0.0",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.2",
-    "prettier": "^3.8.1",
-    "typescript": "^5"
+    "dotenv": "^17.4.0",
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "socket.io": "^4.7.5",
+    "uuid": "^13.0.0"
   }
 }
