@@ -107,39 +107,56 @@ console.log({currentTurn, isMyTurn})
         </>
       )}
       {session.started && Array.isArray(board) && board.length > 0 ? (
-        <div style={{ display: 'inline-grid', gridTemplateColumns: 'repeat(8, 32px)', gap: 2, marginTop: 12, cursor: 'pointer' }}>
-          {board.flat().map((square, idx) => {
-            const row = Math.floor(idx / 8);
-            const col = idx % 8;
-            const isLight = ((row + col) % 2) === 0;
-            const bg = isLight ? '#f0d9b5' : '#b58863';
-            const sq = toAlgebraic(row, col);
-            const isSelected = selected && selected.row === row && selected.col === col;
-            const isValid = validMoves.includes(sq);
-            const highlight = isSelected ? '#ff0' : isValid ? '#0f0' : bg;
-            const pieceColor = square ? (square.color === 'w' ? '#ffffff' : '#000000') : undefined;
-            const textShadow = square ? (square.color === 'w' ? '0 0 8px #000' : '0 0 8px #fff') : undefined;
-            return (
-              <div
-                key={idx}
-                style={{
-                  width: 32,
-                  height: 32,
-                  background: highlight,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 24,
-                  color: pieceColor,
-                  textShadow,
-                  border: isSelected ? '2px solid #ff0' : isValid ? '2px solid #0f0' : '1px solid #888',
-                }}
-                onClick={() => handleSquareClick(row, col)}
-              >
-                {square ? pieceSymbols[square.type === square.type.toUpperCase() ? square.type : square.type.toLowerCase()] : ''}
+        <div style={{ display: 'flex', flexDirection: 'row', marginTop: 12 }}>
+          {/* Row labels (left) */}
+          <div style={{ display: 'flex', flexDirection: 'column', marginRight: 2 }}>
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={i} style={{ height: 32, width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontFamily: 'monospace', fontSize: 16 }}>
+                {8 - i}
               </div>
-            );
-          })}
+            ))}
+          </div>
+          {/* Board grid */}
+          <div style={{ display: 'inline-grid', gridTemplateColumns: 'repeat(8, 32px)', gap: 2, cursor: 'pointer' }}>
+            {board.flat().map((square, idx) => {
+              const row = Math.floor(idx / 8);
+              const col = idx % 8;
+              const isLight = ((row + col) % 2) === 0;
+              const bg = isLight ? '#f0d9b5' : '#b58863';
+              const sq = toAlgebraic(row, col);
+              const isSelected = selected && selected.row === row && selected.col === col;
+              const isValid = validMoves.includes(sq);
+              const highlight = isSelected ? '#ff0' : isValid ? '#0f0' : bg;
+              const pieceColor = square ? (square.color === 'w' ? '#ffffff' : '#000000') : undefined;
+              const textShadow = square ? (square.color === 'w' ? '0 0 8px #000' : '0 0 8px #fff') : undefined;
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    background: highlight,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 24,
+                    color: pieceColor,
+                    textShadow,
+                    border: isSelected ? '2px solid #ff0' : isValid ? '2px solid #0f0' : '1px solid #888',
+                  }}
+                  onClick={() => handleSquareClick(row, col)}
+                >
+                  {square ? pieceSymbols[square.type === square.type.toUpperCase() ? square.type : square.type.toLowerCase()] : ''}
+                </div>
+              );
+            })}
+            {/* Bottom column labels */}
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={'col-label-' + i} style={{ gridColumn: i + 1, gridRow: 9, height: 16, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontFamily: 'monospace', fontSize: 16 }}>
+                {String.fromCharCode(65 + i)}
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
       {/* Move resign button below the board */}

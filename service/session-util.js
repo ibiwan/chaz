@@ -2,6 +2,8 @@
 import { upsertSession } from './database.js';
 import { broadcastState } from './notify.js';
 
+import { Chess } from 'chess.js';
+
 export async function saveAndCleanSession(session, player) {
   const updated = await upsertSession(session);
   if (!updated) {
@@ -22,5 +24,21 @@ export async function saveAndCleanSession(session, player) {
   } else if (player === 'player2') {
     extra.player2_token = player2_token;
   }
-  return { ...rest, ...extra, your_seat: player };
+
+  // Add FEN (PEN) to the state response
+  let fen = null;
+  try {
+    const chess = new Chess();
+    if (rest.moves && typeof rest.moves === 'string' && rest.moves.trim()) {
+      rest.moves.split(',').map(m => m.trim()).filter(Boolean).forEach(m => {
+        const sanitized = m.replace(/[+#]$/, '');
+        chess.move(sanitized);
+      });
+    }
+    fen = chess.fen();
+  } catch (e) {
+    fen = null;
+  }
+
+  return { ...rest, ...extra, your_seat: player, fen };
 }

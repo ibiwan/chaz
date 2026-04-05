@@ -76,6 +76,8 @@ async function move(session, player, moveStr) {
 
   // Update session moves
   session.moves = session.moves ? `${session.moves},${moveStr}` : moveStr;
+  // Reset draw offer if a move is made
+  if (session.draw_offered) session.draw_offered = false;
   return await saveAndCleanSession(session, player);
 }
 

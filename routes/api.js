@@ -1,3 +1,23 @@
+import { offerDraw, acceptDraw } from '../service/metagame.js';
+// Offer draw endpoint
+router.post('/sessions/offer-draw', withPlayerSession(async (req, res, player, session) => {
+  try {
+    const result = await offerDraw(session, player);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+}));
+
+// Accept draw endpoint
+router.post('/sessions/accept-draw', withPlayerSession(async (req, res, player, session) => {
+  try {
+    const result = await acceptDraw(session, player);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+}));
 
 // Minimal REST API router
 import express from 'express';
