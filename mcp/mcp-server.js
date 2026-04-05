@@ -120,6 +120,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ['keyword', 'token']
         }
+      },
+      {
+        name: 'start',
+        description: 'Start the game (both players must be ready)',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            keyword: { type: 'string' },
+            token: { type: 'string' }
+          },
+          required: ['keyword', 'token']
+        }
       }
     ]
   };
@@ -192,6 +204,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'resign':
         response = await fetch(`${API_BASE}/api/sessions/resign`, {
+          method: 'POST',
+          headers
+        });
+        break;
+
+      case 'start':
+        response = await fetch(`${API_BASE}/api/sessions/start`, {
           method: 'POST',
           headers
         });
