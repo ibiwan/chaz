@@ -1,3 +1,29 @@
+// Automatic reconnect on page load
+window.addEventListener('DOMContentLoaded', async () => {
+  const savedKeyword = localStorage.getItem('keyword');
+  const savedToken = localStorage.getItem('token');
+  if (savedKeyword && savedToken) {
+    try {
+      // Fetch current game state
+      const res = await fetch(`/api/sessions?keyword=${encodeURIComponent(savedKeyword)}&token=${encodeURIComponent(savedToken)}`);
+      if (res.ok) {
+        const state = await res.json();
+        // Reconnect WebSocket
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws = new window.WebSocket(`${protocol}://${window.location.host}/ws`);
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ type: 'join', keyword: savedKeyword, token: savedToken }));
+        };
+        // Optionally, render board from state.fen (if you have a renderBoard function)
+        if (window.renderBoard && state.fen) {
+          window.renderBoard(state.fen);
+        }
+      }
+    } catch (err) {
+      // Ignore errors
+    }
+  }
+});
 /**
  * @global React (from CDN)
  * @global Chess (from CDN)
