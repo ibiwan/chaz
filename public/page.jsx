@@ -1,7 +1,14 @@
 // Utility to get all known games from localStorage
+// Format: { keyword: { token, seat } }
 function getKnownGames() {
   try {
-    return JSON.parse(localStorage.getItem('chess_games') || '{}');
+    const games = JSON.parse(localStorage.getItem('chess_games') || '{}');
+    // Migrate old format (bare string token) to { token, seat }
+    const migrated = {};
+    for (const [k, v] of Object.entries(games)) {
+      migrated[k] = typeof v === 'string' ? { token: v, seat: null } : v;
+    }
+    return migrated;
   } catch {
     return {};
   }
@@ -16,30 +23,6 @@ function getKeywordFromUrl() {
   return params.get('keyword') || '';
 }
 
-// Automatic reconnect on page load (by URL param)
-window.addEventListener('DOMContentLoaded', async () => {
-  const urlKeyword = getKeywordFromUrl();
-  const games = getKnownGames();
-  const savedToken = urlKeyword && games[urlKeyword];
-  if (urlKeyword && savedToken) {
-    try {
-      // Fetch current game state
-      const res = await fetch(`/api/sessions?keyword=${encodeURIComponent(urlKeyword)}&token=${encodeURIComponent(savedToken)}`);
-      if (res.ok) {
-        const state = await res.json();
-        // Reconnect WebSocket
-        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws = new window.WebSocket(`${protocol}://${window.location.host}/ws`);
-        ws.onopen = () => {
-          ws.send(JSON.stringify({ type: 'join', keyword: urlKeyword, token: savedToken }));
-        };
-        if (window.renderBoard && state.fen) {
-          window.renderBoard(state.fen);
-        }
-      }
-    } catch (err) {}
-  }
-});
 /**
  * @global React (from CDN)
  * @global Chess (from CDN)
@@ -72,8 +55,8 @@ function HomePage() {
   const urlKeyword = getKeywordFromUrl();
   const games = getKnownGames();
   const [keyword, setKeyword] = useState(() => urlKeyword || '');
-  const [token, setToken] = useState(() => (urlKeyword && games[urlKeyword]) || '');
-  const [seat, setSeat] = useState(() => localStorage.getItem('seat'));
+  const [token, setToken] = useState(() => (urlKeyword && games[urlKeyword]?.token) || '');
+  const [seat, setSeat] = useState(() => (urlKeyword && games[urlKeyword]?.seat) || null);
   const [role, setRole] = useState('');
   const [session, setSession] = useState(null);
   const [error, setError] = useState(null);
@@ -81,7 +64,8 @@ function HomePage() {
 
   const wsRef = useRef(null);
 
-  // Merge local token/seat into session for display and API calls
+  // Merge local token/seat into session for display and API calls.
+  // WebSocket broadcasts omit tokens and your_seat, so we rehydrate them from state.
   function mergeSession(s) {
     if (!s) return s;
     let merged = { ...s };
@@ -102,7 +86,29 @@ function HomePage() {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        ws && ws.send(JSON.stringify({ type: 'join', keyword, token }));
+        ws.send(JSON.stringify({ type: 'join', keyword, token }));
+        // Fetch current game state to restore session after any reconnect.
+        // Also recovers seat when localStorage was migrated from old format.
+        fetch('/api/sessions', {
+          headers: {
+            'x-session-keyword': keyword,
+            'x-session-token': token,
+          },
+        })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            if (!data) return;
+            if (data.your_seat && data.your_seat !== seat) {
+              const serverToken = data[`${data.your_seat}_token`] || token;
+              setSeat(data.your_seat);
+              if (serverToken !== token) setToken(serverToken);
+              const g = getKnownGames();
+              g[keyword] = { token: serverToken, seat: data.your_seat };
+              setKnownGames(g);
+            }
+            setSession(data);
+          })
+          .catch(() => {});
       };
 
       ws.onmessage = (event) => {
@@ -119,7 +125,7 @@ function HomePage() {
         }
       };
 
-      ws.onerror = (err) => {
+      ws.onerror = () => {
         setError('WebSocket error');
       };
 
@@ -158,11 +164,10 @@ function HomePage() {
       const tok = data[`${data.your_seat}_token`];
       setToken(tok);
       setSeat(data.your_seat);
-      localStorage.setItem('seat', data.your_seat);
-      // Update known games
-      const games = getKnownGames();
-      games[keyword] = tok;
-      setKnownGames(games);
+      // Store token and seat together, keyed by keyword
+      const g = getKnownGames();
+      g[keyword] = { token: tok, seat: data.your_seat };
+      setKnownGames(g);
       // Update URL param for this tab
       const params = new URLSearchParams(window.location.search);
       params.set('keyword', keyword);
@@ -174,14 +179,12 @@ function HomePage() {
     }
   };
 
-  // sendAction: handles move, ready, resign, sit
+  // sendAction: handles move, ready, resign, sit, start
   const sendAction = async (action, payload) => {
     setError(null);
     let url = '';
     let body = {};
     if (!token) return;
-    // Always include keyword from localStorage
-    const keyword = localStorage.getItem('keyword') || '';
     const headers = {
       'Content-Type': 'application/json',
       'x-session-keyword': keyword,
@@ -219,12 +222,14 @@ function HomePage() {
       });
       if (res.ok) {
         const data = await res.json();
-        // Update token/seat if present in response
         if (data.your_seat && data[`${data.your_seat}_token`]) {
-          setToken(data[`${data.your_seat}_token`]);
-          setSeat(data.your_seat);
-          localStorage.setItem('token', data[`${data.your_seat}_token`]);
-          localStorage.setItem('seat', data.your_seat);
+          const newToken = data[`${data.your_seat}_token`];
+          const newSeat = data.your_seat;
+          setToken(newToken);
+          setSeat(newSeat);
+          const g = getKnownGames();
+          g[keyword] = { token: newToken, seat: newSeat };
+          setKnownGames(g);
         }
         setSession(mergeSession(data));
       } else {
@@ -256,11 +261,12 @@ function HomePage() {
             <div style={{ marginTop: 8 }}>
               <b>Known Games:</b>
               <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-                {knownGameList.map(([k, t]) => (
+                {knownGameList.map(([k, v]) => (
                   <li key={k}>
                     <button type="button" style={{ margin: 2 }} onClick={() => {
                       setKeyword(k);
-                      setToken(t);
+                      setToken(v.token);
+                      setSeat(v.seat);
                       // Update URL param for this tab
                       const params = new URLSearchParams(window.location.search);
                       params.set('keyword', k);
