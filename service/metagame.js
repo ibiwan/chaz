@@ -4,7 +4,7 @@ async function offerDraw(session, player) {
   if (!player || (player !== 'player1' && player !== 'player2')) throw new Error('Invalid player');
   if (!session.started || isGameOver(session)) throw new Error('Game not in progress');
   if (session.draw_offered) throw new Error('Draw already offered');
-  session.draw_offered = true;
+  session.draw_offered = player;
   return await saveAndCleanSession(session, player);
 }
 
@@ -14,6 +14,7 @@ async function acceptDraw(session, player) {
   if (!player || (player !== 'player1' && player !== 'player2')) throw new Error('Invalid player');
   if (!session.started || isGameOver(session)) throw new Error('Game not in progress');
   if (!session.draw_offered) throw new Error('No draw has been offered');
+  if (session.draw_offered === player) throw new Error('Cannot accept your own draw offer');
   session.winner = null;
   session.gameStatus = 'draw';
   session.draw_offered = false;

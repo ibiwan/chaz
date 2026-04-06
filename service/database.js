@@ -42,7 +42,7 @@ function rowToSession(row) {
     moves: row.moves,
     winner: row.winner,
     gameStatus: row.gameStatus,
-    draw_offered: row.draw_offered === true || row.draw_offered === 1,
+    draw_offered: row.draw_offered || null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -79,7 +79,7 @@ export async function createSession(session) {
       session.moves || '',
       session.winner || null,
       session.gameStatus || null,
-      Boolean(session.draw_offered),
+      session.draw_offered || null,
     ]
   );
   return row ? rowToSession(row) : null;
@@ -121,7 +121,7 @@ export async function upsertSession(session) {
       session.moves || '',
       session.winner || null,
       session.gameStatus || null,
-      Boolean(session.draw_offered),
+      session.draw_offered || null,
     ]
   );
   return row ? rowToSession(row) : null;

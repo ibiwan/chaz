@@ -76,7 +76,7 @@ function ChessBoard({ board, session, role, sendAction }) {
     <div style={{ marginBottom: 8 }}>
       <button onClick={() => sendAction('resign')}>Resign</button>
       <button onClick={() => sendAction('offer-draw')} style={{ marginLeft: 4 }}>Offer Draw</button>
-      {session.draw_offered && <button onClick={() => sendAction('accept-draw')} style={{ marginLeft: 4 }}>Accept Draw</button>}
+      {session.draw_offered && session.draw_offered !== session.your_seat && <button onClick={() => sendAction('accept-draw')} style={{ marginLeft: 4 }}>Accept Draw</button>}
     </div>
   );
 
