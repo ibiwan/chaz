@@ -2,7 +2,7 @@
 async function offerDraw(session, player) {
   if (!session) throw new Error('Session not found');
   if (!player || (player !== 'player1' && player !== 'player2')) throw new Error('Invalid player');
-  if (!session.started || session.ended) throw new Error('Game not in progress');
+  if (!session.started || isGameOver(session)) throw new Error('Game not in progress');
   if (session.draw_offered) throw new Error('Draw already offered');
   session.draw_offered = true;
   return await saveAndCleanSession(session, player);
@@ -12,9 +12,8 @@ async function offerDraw(session, player) {
 async function acceptDraw(session, player) {
   if (!session) throw new Error('Session not found');
   if (!player || (player !== 'player1' && player !== 'player2')) throw new Error('Invalid player');
-  if (!session.started || session.ended) throw new Error('Game not in progress');
+  if (!session.started || isGameOver(session)) throw new Error('Game not in progress');
   if (!session.draw_offered) throw new Error('No draw has been offered');
-  session.ended = true;
   session.winner = null;
   session.gameStatus = 'draw';
   session.draw_offered = false;
@@ -22,6 +21,7 @@ async function acceptDraw(session, player) {
 }
 import { getSessionByKeyword, createSession, upsertSession } from './database.js';
 import { saveAndCleanSession } from './session-util.js';
+import { isGameOver } from './game.js';
 import { v4 as uuidv4 } from 'uuid';
 
 async function sit(session, player, color) {

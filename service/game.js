@@ -1,6 +1,10 @@
 import { saveAndCleanSession } from './session-util.js';
-
 import { Chess } from 'chess.js';
+
+const TERMINAL_STATUSES = new Set(['checkmate', 'stalemate', 'draw', 'resigned']);
+export function isGameOver(session) {
+  return TERMINAL_STATUSES.has(session?.gameStatus);
+}
 
 // move: validate and apply a move using chess.js
 async function move(session, player, moveStr) {
@@ -59,15 +63,12 @@ async function move(session, player, moveStr) {
   if (chess.isCheckmate()) {
     // Current player made a move, so opponent is checkmated
     session.winner = player;
-    session.ended = true;
     gameStatus = 'checkmate';
   } else if (chess.isStalemate()) {
     session.winner = null;
-    session.ended = true;
     gameStatus = 'stalemate';
   } else if (chess.isDraw()) {
     session.winner = null;
-    session.ended = true;
     gameStatus = 'draw';
   } else if (chess.inCheck()) {
     gameStatus = 'check';
@@ -92,7 +93,7 @@ async function resign(session, player) {
   if (!session.started) {
     throw new Error('Game not started');
   }
-  if (session.winner) {
+  if (isGameOver(session)) {
     throw new Error('Game already ended');
   }
 
