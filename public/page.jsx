@@ -211,6 +211,14 @@ function HomePage() {
         url = '/api/sessions/start';
         body = { token };
         break;
+      case 'offer-draw':
+        url = '/api/sessions/offer-draw';
+        body = { token };
+        break;
+      case 'accept-draw':
+        url = '/api/sessions/accept-draw';
+        body = { token };
+        break;
       default:
         return;
     }

@@ -72,9 +72,11 @@ function ChessBoard({ board, session, role, sendAction }) {
       <button onClick={() => sendAction('start')}>Start Game</button>
     </div>
   );
-  const resignButton = (
+  const gameButtons = (
     <div style={{ marginBottom: 8 }}>
       <button onClick={() => sendAction('resign')}>Resign</button>
+      <button onClick={() => sendAction('offer-draw')} style={{ marginLeft: 4 }}>Offer Draw</button>
+      {session.draw_offered && <button onClick={() => sendAction('accept-draw')} style={{ marginLeft: 4 }}>Accept Draw</button>}
     </div>
   );
 
@@ -159,8 +161,8 @@ console.log({currentTurn, isMyTurn})
           </div>
         </div>
       ) : null}
-      {/* Move resign button below the board */}
-      {session.started && resignButton}
+      {/* Action buttons below the board */}
+      {showResign && gameButtons}
     </div>
   );
 
